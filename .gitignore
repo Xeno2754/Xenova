@@ -21,3 +21,21 @@ logs/
 # OS
 Thumbs.db
 .DS_Store
+
+#Cache
+cache/
+
+#Audio files (temporary recordings)
+*.wav
+*.mp3
+
+
+# Python cache files
+.pytest_cache/
+.mypy_cache/
+
+
+#Build files
+build/
+dist/
+*.egg-info/
