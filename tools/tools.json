@@ -1,0 +1,41 @@
+{
+  "tools": [
+    {
+      "name": "web_search",
+      "description": "Search the internet for current information such as news, latest movies, weather, sports, prices, technology and recent events.",
+      "function": "web_search",
+      "parameters": {
+        "query": "string"
+      },
+      "enabled": true
+    },
+    {
+      "name": "open_app",
+      "description": "Open an application installed on the computer.",
+      "function": "open_app",
+      "parameters": {
+        "app": "string"
+      },
+      "enabled": true
+    },
+    {
+      "name": "remember",
+      "description": "Store long-term information about the user.",
+      "function": "remember",
+      "parameters": {
+        "key": "string",
+        "value": "string"
+      },
+      "enabled": true
+    },
+    {
+      "name": "recall",
+      "description": "Recall stored long-term information.",
+      "function": "recall",
+      "parameters": {
+        "key": "string"
+      },
+      "enabled": true
+    }
+  ]
+}
