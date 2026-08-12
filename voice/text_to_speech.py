@@ -1,5 +1,6 @@
 import time
 
+
 tts = None
 
 DEFAULT_SPEAKER = "Claribel Dervla"
@@ -21,17 +22,28 @@ def get_tts():
 
         print(f"🖥️ TTS device: {device}")
 
-        tts = TTS(
+        engine = TTS(
             model_name="tts_models/multilingual/multi-dataset/xtts_v2"
         )
 
-        tts = tts.to(device)
+        tts = engine.to(device)
 
         print(
             f"✅ XTTS loaded in {time.time() - start:.2f}s"
         )
 
     return tts
+
+
+def preload_tts():
+    """Load XTTS while the UI is already running."""
+    try:
+        get_tts()
+        print("✅ XTTS ready.")
+        return True
+    except Exception as e:
+        print(f"⚠️ XTTS preload failed: {e}")
+        return False
 
 
 def speak(text):
@@ -41,17 +53,9 @@ def speak(text):
 
     filename = "response.wav"
 
-    # ---------------------------------
-    # LOAD MODEL
-    # ---------------------------------
-
     start_total = time.time()
 
     engine = get_tts()
-
-    # ---------------------------------
-    # GENERATE SPEECH
-    # ---------------------------------
 
     start_tts = time.time()
 
@@ -69,10 +73,6 @@ def speak(text):
     print(
         f"⚡ Speech generation: {tts_time:.2f}s"
     )
-
-    # ---------------------------------
-    # PLAY AUDIO
-    # ---------------------------------
 
     start_playback = time.time()
 
