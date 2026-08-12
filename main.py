@@ -2,7 +2,6 @@ import time
 import threading
 
 start = time.time()
-
 print("Starting...")
 
 # ==================================================
@@ -20,33 +19,30 @@ print(f"database import: {time.time() - t:.2f}s")
 # ==================================================
 # DATABASE
 # ==================================================
-
 t = time.time()
 init_db()
 print(f"database init: {time.time() - t:.2f}s")
-
 print(f"Total startup before UI: {time.time() - start:.2f}s")
 
 
-def preload_models():
-    """Warm up heavyweight local models without blocking the UI."""
+def preload_whisper():
     try:
-        print("🔥 Background model preload started...")
-
+        print("🔥 Whisper background preload started...")
         from voice.speech_to_text import get_model
         t = time.time()
         get_model()
         print(f"✅ Whisper ready in background: {time.time() - t:.2f}s")
-
     except Exception as e:
         print(f"⚠️ Whisper preload failed: {e}")
 
+
+def preload_xtts():
     try:
+        print("🔥 XTTS background preload started...")
         from voice.text_to_speech import preload_tts
         t = time.time()
         preload_tts()
         print(f"✅ XTTS background preload finished in {time.time() - t:.2f}s")
-
     except Exception as e:
         print(f"⚠️ XTTS preload failed: {e}")
 
@@ -54,9 +50,7 @@ def preload_models():
 # ==================================================
 # APPLICATION
 # ==================================================
-
 def main():
-
     from interface import XenovaInterface
 
     print("=" * 50)
@@ -78,12 +72,19 @@ def main():
     print("✅ Voice pipeline connected")
     print("=" * 50)
 
-    # Start heavyweight model loading in the background.
-    # The Tkinter UI remains responsive while models load.
+    # Start both heavyweight models independently.
+    # XTTS has a lock so the first voice response cannot start
+    # a second XTTS load while the background preload is running.
     threading.Thread(
-        target=preload_models,
+        target=preload_whisper,
         daemon=True,
-        name="XenovaModelPreloader"
+        name="WhisperPreloader"
+    ).start()
+
+    threading.Thread(
+        target=preload_xtts,
+        daemon=True,
+        name="XTTSPreloader"
     ).start()
 
     interface.run()
