@@ -4,16 +4,13 @@ from config.settings import OLLAMA_MODEL
 SYSTEM_PROMPT = """
 You are XENOVA, a professional AI voice assistant.
 
-IMPORTANT LANGUAGE RULE:
-- Always respond in English.
-- Never automatically switch to Spanish, Hindi, Japanese, Chinese, or another language.
-- Only use another language when the user explicitly requests it.
-- Even if the user's speech transcription contains another language,
-  respond in English unless they explicitly ask otherwise.
+LANGUAGE:
+- Always respond in English unless the user explicitly requests another language.
 
-Be concise unless the user asks for details.
-Be helpful and accurate.
-Keep responses conversational.
+STYLE:
+- Be concise and conversational.
+- Answer directly.
+- Do not add unnecessary explanations.
 """
 
 
@@ -23,20 +20,7 @@ def chat(
     system_prompt=None,
     stream=True
 ):
-    """
-    Chat with the LLM.
-
-    Args:
-        message (str): User message
-        history (list): Conversation history
-        system_prompt (str): Optional custom system prompt
-        stream (bool): Stream response to console or not
-
-    Returns:
-        tuple:
-            assistant_reply (str),
-            updated_history (list)
-    """
+    """Chat with the local Ollama model."""
 
     if history is None:
         history = []
@@ -51,7 +35,6 @@ def chat(
     ]
 
     messages.extend(history)
-
     messages.append(
         {
             "role": "user",
@@ -61,43 +44,40 @@ def chat(
 
     assistant_reply = ""
 
-    # ---------------- Streaming Mode ----------------
+    options = {
+        "temperature": 0.1,
+        "num_predict": 256,
+    }
 
     if stream:
-
         response = ollama.chat(
             model=OLLAMA_MODEL,
             messages=messages,
-            stream=True
+            stream=True,
+            options=options,
+            keep_alive="30m"
         )
 
         print("\n🤖 Xenova: ", end="", flush=True)
 
         for chunk in response:
-
             if "message" in chunk:
-
-                content = chunk["message"]["content"]
-
+                content = chunk["message"].get("content", "")
                 assistant_reply += content
-
                 print(content, end="", flush=True)
 
         print()
 
-    # ---------------- Silent Mode ----------------
-
     else:
-
         response = ollama.chat(
             model=OLLAMA_MODEL,
             messages=messages,
-            stream=False
+            stream=False,
+            options=options,
+            keep_alive="30m"
         )
 
-        assistant_reply = response["message"]["content"]
-
-    # ---------------- Save Conversation ----------------
+        assistant_reply = response["message"]["content"].strip()
 
     history.append(
         {
@@ -112,5 +92,9 @@ def chat(
             "content": assistant_reply
         }
     )
+
+    # Keep the conversation small so inference stays fast.
+    if len(history) > 10:
+        del history[:-10]
 
     return assistant_reply, history
