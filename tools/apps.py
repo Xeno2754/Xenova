@@ -1,5 +1,5 @@
 import subprocess
-import os
+import webbrowser
 
 APPS = {
     "chrome": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
@@ -7,18 +7,33 @@ APPS = {
     "vscode": r"C:\Users\Ainesh\AppData\Local\Programs\Microsoft VS Code\Code.exe",
     "notepad": "notepad.exe",
     "calculator": "calc.exe",
-    "cmd": "cmd.exe"
+    "cmd": "cmd.exe",
+}
+
+WEBSITES = {
+    "youtube": "https://www.youtube.com",
+    "google": "https://www.google.com",
+    "gmail": "https://mail.google.com",
+    "github": "https://github.com",
+    "chatgpt": "https://chat.openai.com",
+    "spotify": "https://open.spotify.com",
 }
 
 
-def open_app(app_name):
-    app_name = app_name.lower()
+def open_app(name):
+    name = name.lower().strip()
 
-    if app_name not in APPS:
-        return f"I don't know how to open {app_name}."
+    # Open installed application
+    if name in APPS:
+        try:
+            subprocess.Popen(APPS[name])
+            return f"Opening {name}."
+        except Exception as e:
+            return f"Failed to open {name}: {e}"
 
-    try:
-        subprocess.Popen(APPS[app_name])
-        return f"Opening {app_name}."
-    except Exception as e:
-        return str(e)
+    # Open website
+    if name in WEBSITES:
+        webbrowser.open(WEBSITES[name])
+        return f"Opening {name}."
+
+    return f"I don't know how to open '{name}'."

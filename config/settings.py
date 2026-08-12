@@ -4,7 +4,7 @@ import torch
 # AI MODELS
 # ===========================
 
-OLLAMA_MODEL = "qwen3:8b"
+OLLAMA_MODEL = "llama3.2:latest"
 
 WHISPER_MODEL = "base"
 

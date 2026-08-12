@@ -1,3 +1,4 @@
+
 import time
 
 model = None
@@ -14,24 +15,50 @@ def get_model():
         start = time.time()
 
         model = WhisperModel(
-            "base",
+            "tiny.en",
             device="cuda",
-            compute_type="float16"
+            compute_type="float16",
+            cpu_threads=4,
+            num_workers=1
         )
 
-        print(f"✅ Whisper loaded in {time.time() - start:.2f}s")
+        print(
+            f"Whisper loaded in "
+            f"{time.time() - start:.2f}s"
+        )
 
     return model
 
 
 def transcribe(audio_file):
+
+    start = time.time()
+
     whisper = get_model()
 
-    segments, info = whisper.transcribe(audio_file)
+    print("Transcribing...")
 
-    text = ""
+    segments, info = whisper.transcribe(
+        audio_file,
+        language="en",
+        beam_size=1,
+        best_of=1,
+        temperature=0,
+        condition_on_previous_text=False,
+        vad_filter=True
+    )
 
-    for segment in segments:
-        text += segment.text
+    text = " ".join(
+        segment.text.strip()
+        for segment in segments
+    ).strip()
 
-    return text.strip()
+    elapsed = time.time() - start
+
+    print(
+        f"Whisper transcription: "
+        f"{elapsed:.2f}s"
+    )
+
+    return text
+

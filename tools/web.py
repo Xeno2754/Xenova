@@ -1,28 +1,48 @@
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 import time
 
 
 def web_search(query):
+    """
+    Search the internet using DDGS.
+    """
+
     try:
         start = time.time()
 
         with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=5))
+            results = list(
+                ddgs.text(
+                    query,
+                    max_results=5
+                )
+            )
 
-        print(f"🌐 DuckDuckGo: {time.time() - start:.2f}s")
+        elapsed = time.time() - start
+
+        print(f"🌐 Web Search: {elapsed:.2f}s")
 
         if not results:
-            return "No results found."
+            return "No search results found."
 
         answer = "Here are the top search results:\n\n"
 
         for i, result in enumerate(results, 1):
+
+            title = result.get("title", "No title")
+            url = result.get("href", "")
+            body = result.get("body", "")
+
             answer += (
-                f"{i}. {result['title']}\n"
-                f"{result['href']}\n\n"
+                f"{i}. {title}\n"
+                f"URL: {url}\n"
+                f"Summary: {body}\n\n"
             )
 
         return answer
 
     except Exception as e:
-        return str(e)
+
+        print(f"❌ Web search error: {e}")
+
+        return f"Web search failed: {e}"
