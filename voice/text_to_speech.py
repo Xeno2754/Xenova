@@ -2,6 +2,13 @@ import re
 import time
 import threading
 from pathlib import Path
+import subprocess
+import sys
+
+
+# Fast TTS runs in the dedicated Python 3.12 environment because Kokoro
+# requires NumPy 1.26.4, while the main Xenova environment uses Python 3.13.
+KOKORO_PYTHON = Path(__file__).resolve().parents[1] / "kokoro_venv" / "Scripts" / "python.exe"
 
 
 tts = None
@@ -11,6 +18,55 @@ _tts_loading = False
 _tts_error = None
 
 DEFAULT_SPEAKER = "Claribel Dervla"
+DEFAULT_KOKORO_VOICE = "af_heart"
+
+
+def _kokoro_available():
+    return KOKORO_PYTHON.exists()
+
+
+def _kokoro_code():
+    return r'''
+import sys
+import numpy as np
+import sounddevice as sd
+from kokoro import KPipeline
+
+text = sys.argv[1]
+voice = sys.argv[2] if len(sys.argv) > 2 else "af_heart"
+speed = float(sys.argv[3]) if len(sys.argv) > 3 else 1.0
+
+pipeline = KPipeline(lang_code="a")
+chunks = []
+for _, _, audio in pipeline(text, voice=voice, speed=speed):
+    if hasattr(audio, "detach"):
+        audio = audio.detach().cpu().numpy()
+    chunks.append(np.asarray(audio, dtype=np.float32))
+
+if not chunks:
+    raise RuntimeError("Kokoro generated no audio")
+
+audio = np.concatenate(chunks)
+sd.play(audio, 24000)
+sd.wait()
+'''
+
+
+def speak_fast(text, voice=DEFAULT_KOKORO_VOICE, speed=1.0):
+    """Use the isolated Python 3.12 Kokoro environment for fast local speech."""
+    if not text or not str(text).strip():
+        return False
+    if not _kokoro_available():
+        raise RuntimeError(f"Kokoro environment not found: {KOKORO_PYTHON}")
+
+    start = time.time()
+    print("⚡ Fast TTS: Kokoro")
+    subprocess.run(
+        [str(KOKORO_PYTHON), "-c", _kokoro_code(), str(text), voice, str(speed)],
+        check=True,
+    )
+    print(f"⚡ Fast TTS total: {time.time() - start:.2f}s")
+    return True
 
 
 def get_tts():
@@ -60,7 +116,7 @@ def get_tts():
 
 
 def preload_tts():
-    """Load XTTS in the background before the first response."""
+    """Keep XTTS preload available for character/high-quality mode."""
     try:
         get_tts()
         print("✅ XTTS ready.")
@@ -91,69 +147,56 @@ def _split_sentences(text, max_chars=220):
 
 
 def speak(text):
-    """Original complete-response TTS API, kept for compatibility."""
+    """Fast default speech. Falls back to XTTS if Kokoro is unavailable."""
+    start = time.time()
+    try:
+        if speak_fast(text):
+            return
+    except Exception as e:
+        print(f"⚠️ Fast TTS unavailable: {e}")
+        print("↩️ Falling back to XTTS v2...")
+
     import sounddevice as sd
     import soundfile as sf
 
     filename = "response.wav"
-    start_total = time.time()
     engine = get_tts()
 
     start_tts = time.time()
-    print("🗣️ Generating speech...")
+    print("🗣️ Generating XTTS speech...")
     engine.tts_to_file(
         text=str(text),
         speaker=DEFAULT_SPEAKER,
         language="en",
         file_path=filename,
     )
-    print(f"⚡ Speech generation: {time.time() - start_tts:.2f}s")
+    print(f"⚡ XTTS generation: {time.time() - start_tts:.2f}s")
 
     start_playback = time.time()
     audio, samplerate = sf.read(filename)
     sd.play(audio, samplerate)
     sd.wait()
     print(f"🔊 Playback: {time.time() - start_playback:.2f}s")
-    print(f"⚡ Total TTS: {time.time() - start_total:.2f}s")
+    print(f"⚡ Total TTS: {time.time() - start:.2f}s")
 
 
 def speak_stream(text):
-    """Generate and play one sentence at a time.
-
-    This reduces perceived latency for longer replies while preserving the
-    existing XTTS model and audio backend.
-    """
-    import sounddevice as sd
-    import soundfile as sf
-
+    """Fast default streaming API; uses Kokoro sentence by sentence."""
     sentences = _split_sentences(text)
     if not sentences:
         return
 
-    engine = get_tts()
     total_start = time.time()
-    print(f"🗣️ Streaming speech: {len(sentences)} sentence(s)")
+    print(f"🗣️ Fast streaming speech: {len(sentences)} sentence(s)")
 
     for index, sentence in enumerate(sentences, 1):
-        filename = Path(f"cache/tts_{threading.get_ident()}_{index}.wav")
-        filename.parent.mkdir(parents=True, exist_ok=True)
-
         start = time.time()
-        engine.tts_to_file(
-            text=sentence,
-            speaker=DEFAULT_SPEAKER,
-            language="en",
-            file_path=str(filename),
-        )
-        print(f"⚡ Sentence {index} generation: {time.time() - start:.2f}s")
-
-        audio, samplerate = sf.read(str(filename))
-        sd.play(audio, samplerate)
-        sd.wait()
-
         try:
-            filename.unlink(missing_ok=True)
-        except Exception:
-            pass
+            speak_fast(sentence)
+        except Exception as e:
+            print(f"⚠️ Kokoro sentence {index} failed: {e}")
+            # Fall back to the existing XTTS path for this sentence.
+            speak(sentence)
+        print(f"⚡ Sentence {index}: {time.time() - start:.2f}s")
 
-    print(f"⚡ Total streaming TTS: {time.time() - total_start:.2f}s")
+    print(f"⚡ Total fast streaming TTS: {time.time() - total_start:.2f}s")
