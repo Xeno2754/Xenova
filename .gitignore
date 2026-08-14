@@ -39,3 +39,4 @@ cache/
 build/
 dist/
 *.egg-info/
+kokoro_venv/

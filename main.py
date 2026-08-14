@@ -7,7 +7,6 @@ print("Starting...")
 # ==================================================
 # IMPORTS
 # ==================================================
-
 t = time.time()
 from assistant.assistant import XenovaController
 print(f"assistant import: {time.time() - t:.2f}s")
@@ -36,15 +35,15 @@ def preload_whisper():
         print(f"⚠️ Whisper preload failed: {e}")
 
 
-def preload_xtts():
+def preload_fast_tts():
     try:
-        print("🔥 XTTS background preload started...")
+        print("🔥 Kokoro background preload started...")
         from voice.text_to_speech import preload_tts
         t = time.time()
         preload_tts()
-        print(f"✅ XTTS background preload finished in {time.time() - t:.2f}s")
+        print(f"✅ Kokoro ready in background: {time.time() - t:.2f}s")
     except Exception as e:
-        print(f"⚠️ XTTS preload failed: {e}")
+        print(f"⚠️ Kokoro preload failed: {e}")
 
 
 # ==================================================
@@ -72,9 +71,9 @@ def main():
     print("✅ Voice pipeline connected")
     print("=" * 50)
 
-    # Start both heavyweight models independently.
-    # XTTS has a lock so the first voice response cannot start
-    # a second XTTS load while the background preload is running.
+    # Preload only the models needed for the normal fast path.
+    # XTTS is intentionally lazy and remains available as the
+    # high-quality/character-voice fallback.
     threading.Thread(
         target=preload_whisper,
         daemon=True,
@@ -82,9 +81,9 @@ def main():
     ).start()
 
     threading.Thread(
-        target=preload_xtts,
+        target=preload_fast_tts,
         daemon=True,
-        name="XTTSPreloader"
+        name="KokoroPreloader"
     ).start()
 
     interface.run()
