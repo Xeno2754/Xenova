@@ -246,6 +246,78 @@ For a tool:
 
 def plan(user_input):
 
+    text = user_input.lower().strip()
+
+    # Deterministic memory-recall routing
+    recall_phrases = [
+        "what is my college",
+        "which college do i study in",
+        "which college am i in",
+        "what college do i study in",
+        "where do i study",
+    ]
+
+    if any(phrase in text for phrase in recall_phrases):
+        result = {
+            "action": "recall",
+            "response": "",
+            "tool": None,
+            "memory": {
+                "remember": False,
+                "key": "",
+                "value": ""
+            },
+            "key": "college",
+            "value": ""
+        }
+
+        print()
+        print("===== DETERMINISTIC ROUTE =====")
+        print(result)
+        print("===============================")
+        print()
+
+        return result
+
+    # Deterministic screen-analysis routing
+    screen_phrases = [
+        "what do you see on my screen",
+        "what is on my screen",
+        "what's on my screen",
+        "what is visible on my screen",
+        "what's visible on my screen",
+        "look at my screen",
+        "analyze my screen",
+        "analyse my screen",
+        "what application is open",
+        "what app is open",
+    ]
+
+    if any(phrase in text for phrase in screen_phrases):
+        result = {
+            "action": "tool",
+            "response": "",
+            "tool": {
+                "name": "analyze_screen",
+                "input": ""
+            },
+            "memory": {
+                "remember": False,
+                "key": "",
+                "value": ""
+            },
+            "key": "",
+            "value": ""
+        }
+
+        print()
+        print("===== DETERMINISTIC ROUTE =====")
+        print(result)
+        print("===============================")
+        print()
+
+        return result
+
     reply, _ = chat(
         user_input,
         [],
