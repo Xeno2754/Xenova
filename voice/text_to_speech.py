@@ -83,12 +83,29 @@ def _start_kokoro_worker():
             bufsize=1,
         )
 
-        ready = _worker.stdout.readline().strip()
+        # Kokoro/Hugging Face may print warnings or informational lines to
+        # stdout before its READY signal. Wait for READY instead of treating
+        # the first startup line as a fatal error.
+        ready = None
+
+        while True:
+            line = _worker.stdout.readline()
+
+            if not line:
+                break
+
+            line = line.strip()
+
+            if line == "READY":
+                ready = line
+                break
+
+            print(f"🔊 Kokoro startup: {line}")
+
         if ready != "READY":
-            output = ready or "no READY signal"
             _worker.kill()
             _worker = None
-            raise RuntimeError(f"Kokoro worker failed to start: {output}")
+            raise RuntimeError("Kokoro worker failed to start: no READY signal")
 
         print(f"✅ Kokoro worker ready in {time.time() - start:.2f}s")
         return _worker
